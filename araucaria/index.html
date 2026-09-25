@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="Araucaria Last Planner: planificación semanal y control de compromisos de obra.">
+  <title>Araucaria · Last Planner</title>
+  <link rel="icon" type="image/png" href="assets/logo.png">
+  <link rel="apple-touch-icon" href="assets/logo.png">
+  <!-- Tipografía: si no hay internet se usa la fuente del sistema -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap">
+  <link rel="stylesheet" href="css/styles.css">
+  <script>
+    // Aplica el tema antes de pintar para evitar parpadeo (sigue el tema del sistema)
+    (function () {
+      var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    })();
+  </script>
+</head>
+<body>
+  <div class="app">
+    <!-- Menú lateral (tablet horizontal y escritorio) -->
+    <aside class="sidebar" aria-label="Menú principal">
+      <div class="sb-brand">
+        <img src="assets/logo.png" alt="" width="40" height="40">
+        <div>
+          <strong>Araucaria</strong>
+          <span>Last Planner</span>
+        </div>
+      </div>
+      <nav class="sb-nav" id="sideNav"></nav>
+      <div class="sb-foot">
+        <p>Prototipo con datos de demostración</p>
+        <p id="sbToday"></p>
+      </div>
+    </aside>
+
+    <div class="main-wrap">
+      <header class="topbar">
+        <div class="tb-brand">
+          <img src="assets/logo.png" alt="" width="32" height="32">
+          <div>
+            <strong>Araucaria</strong>
+            <span>Last Planner</span>
+          </div>
+        </div>
+
+        <label class="tb-project">
+          <span class="sr-only">Proyecto</span>
+          <select id="projectSelect" data-change="project"></select>
+        </label>
+
+        <div class="week-nav tb-week" role="group" aria-label="Semana">
+          <button type="button" class="wn-btn" data-action="week-prev" aria-label="Semana anterior"></button>
+          <div class="wn-label" id="weekLabel" aria-live="polite"></div>
+          <button type="button" class="wn-btn" data-action="week-next" aria-label="Semana siguiente"></button>
+        </div>
+
+        <button type="button" class="icon-btn tb-theme" data-action="toggle-theme" aria-label="Cambiar entre modo claro y oscuro">
+          <span class="ico-sun"></span><span class="ico-moon"></span>
+        </button>
+      </header>
+
+      <main id="view" class="view" tabindex="-1"></main>
+    </div>
+
+    <!-- Navegación inferior (teléfono y tablet vertical) -->
+    <nav class="bottom-nav" id="bottomNav" aria-label="Menú principal"></nav>
+  </div>
+
+  <div id="modalRoot"></div>
+  <div id="toastRoot" class="toast-root" aria-live="polite"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
