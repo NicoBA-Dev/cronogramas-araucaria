@@ -23,7 +23,7 @@
 </head>
 <body>
   <div class="app">
-    <!-- Menú lateral (tablet horizontal y escritorio) -->
+    <!-- Menú lateral (escritorio) -->
     <aside class="sidebar" aria-label="Menú principal">
       <div class="sb-brand">
         <img src="assets/logo.png" alt="" width="40" height="40">
@@ -51,13 +51,15 @@
 
         <label class="tb-project">
           <span class="sr-only">Proyecto</span>
-          <select id="projectSelect" data-change="project"></select>
+          <select id="projectSelect"></select>
         </label>
 
-        <div class="week-nav tb-week" role="group" aria-label="Semana">
-          <button type="button" class="wn-btn" data-action="week-prev" aria-label="Semana anterior"></button>
-          <div class="wn-label" id="weekLabel" aria-live="polite"></div>
-          <button type="button" class="wn-btn" data-action="week-next" aria-label="Semana siguiente"></button>
+        <div class="tb-operator">
+          <label class="tb-op">
+            <span class="tb-op-label">¿Quién opera?</span>
+            <select id="operatorSelect" aria-label="¿Quién está operando?"></select>
+          </label>
+          <span class="sim-badge" id="simBadge" hidden></span>
         </div>
 
         <button type="button" class="icon-btn tb-theme" data-action="toggle-theme" aria-label="Cambiar entre modo claro y oscuro">
@@ -68,7 +70,7 @@
       <main id="view" class="view" tabindex="-1"></main>
     </div>
 
-    <!-- Navegación inferior (teléfono y tablet vertical) -->
+    <!-- Navegación inferior (teléfono y tablet) -->
     <nav class="bottom-nav" id="bottomNav" aria-label="Menú principal"></nav>
   </div>
 
