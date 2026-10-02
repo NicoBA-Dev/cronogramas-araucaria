@@ -67,12 +67,10 @@
     view: 'dashboard',
     projectId: DB.projects[0].id,
     operator: DB.operators[0],
-    sim: null,                       // { date, time } cuando se simula fecha y hora
     planFrom: 1, planCount: CFG.weeksVisible, planSearch: '', planContractor: '', planScroll: true,
     scoreWeek: 1, scoreTab: 'calificar', scoreDraft: {}, month: null, histContractor: '',
     cfgTab: 'proyectos',
     repTab: 'ppc', repFrom: 1, repTo: 1, repContractor: '', repActivity: '', repCause: '',
-    logWho: '', logType: '', logDate: '',
     exp: null
   };
   let M = null;                      // estado del modal abierto
@@ -122,9 +120,8 @@
   function monthLabel(mk) { const [y, m] = mk.split('-'); return `${cap(MONTHS[Number(m) - 1])} ${y}`; }
   const range = (a, b) => { const out = []; for (let i = a; i <= b; i++) out.push(i); return out; };
 
-  /* ---------- Reloj (real o simulado) ---------- */
+  /* ---------- Reloj (siempre la fecha y hora reales) ---------- */
   function nowP() {
-    if (S.sim) { const [h, m] = S.sim.time.split(':').map(Number); return { date: S.sim.date, min: h * 60 + m }; }
     const d = new Date();
     return { date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`, min: d.getHours() * 60 + d.getMinutes() };
   }
@@ -973,7 +970,7 @@
   /* =========================================================
      VISTA: REPORTES (toda la información, con filtros)
      ========================================================= */
-  const REP_TABS = [['ppc', 'PPC'], ['causas', 'Causas'], ['calidad', 'Calidad y limpieza'], ['asistencia', 'Asistencia'], ['tardias', 'Calificaciones tardías'], ['ranking', 'Ranking'], ['log', 'Bitácora']];
+  const REP_TABS = [['ppc', 'PPC'], ['causas', 'Causas'], ['calidad', 'Calidad y limpieza'], ['asistencia', 'Asistencia'], ['tardias', 'Calificaciones tardías'], ['ranking', 'Ranking']];
 
   function repWeeks() {
     if (S.repTo < S.repFrom) S.repTo = S.repFrom;
@@ -1115,26 +1112,6 @@
     return `<div class="banner banner-info"><span class="banner-ico">${I.info}</span><p><strong>Falta grave</strong><span>Un contratista con falta grave queda fuera del ranking y del bonus de esa semana.</span></p></div>${tables.map((x) => tblCard(x)).join('')}`;
   }
 
-  function repLog(tables) {
-    let es = DB.log.slice();
-    if (S.logWho) es = es.filter((e) => e.who === S.logWho);
-    if (S.logType) es = es.filter((e) => e.type === S.logType);
-    if (S.logDate) es = es.filter((e) => e.at.slice(0, 10) === S.logDate);
-    const types = [...new Set(DB.log.map((e) => e.type))].sort();
-    tables.push({ title: 'Bitácora de actividad', headers: ['Fecha y hora', 'Operador', 'Tipo', 'Detalle'],
-      rows: es.map((e) => ({ cells: [fmtStamp(e.at), esc(e.who), esc(e.type), `<span class="note-cell">${esc(e.detail)}</span>`] })) });
-    const shown = { title: tables[0].title, headers: tables[0].headers, rows: tables[0].rows.slice(0, 300) };
-    return `<section class="card">
-      <div class="rep-filters rep-filters-log">
-        <label class="field"><span>Operador</span><select data-change="log-who"><option value="">Todos</option>${DB.operators.map((o) => `<option${o === S.logWho ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select></label>
-        <label class="field"><span>Tipo de acción</span><select data-change="log-type"><option value="">Todas</option>${types.map((o) => `<option${o === S.logType ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select></label>
-        <label class="field"><span>Fecha</span><input type="date" value="${esc(S.logDate)}" data-change="log-date"></label>
-      </div>
-      <p class="card-sub">${es.length} ${es.length === 1 ? 'registro' : 'registros'}${es.length > 300 ? ' (se muestran los 300 más recientes; el Excel incluye todos)' : ''}. Quién hizo qué y cuándo, incluyendo calificaciones tardías.</p>
-      ${shown.rows.length ? rtable(shown.headers, shown.rows) : empty('Sin registros', 'Todavía no hay acciones con estos filtros.')}
-    </section>`;
-  }
-
   function viewReportes() {
     S.repFrom = clamp(S.repFrom, 1, MAX_WEEK);
     S.repTo = clamp(S.repTo, 1, MAX_WEEK);
@@ -1149,13 +1126,13 @@
       case 'asistencia': body = repAsistencia(list, weeks, tables); break;
       case 'tardias': body = repTardias(list, weeks, tables); break;
       case 'ranking': body = repRanking(list, weeks, tables); break;
-      default: body = repLog(tables);
+      default: body = repRanking(list, weeks, tables);
     }
     const tabName = REP_TABS.find((t) => t[0] === S.repTab)[1];
     S.exp = { name: `Reporte_${tabName}`, title: `Reporte: ${tabName}`, tables };
     const acts = [...new Set(projActs().map((a) => a.name))].sort(cmpEs);
     const rangeTxt = `semanas ${weeks[0]} a ${weeks[weeks.length - 1]}`;
-    const filters = S.repTab === 'log' ? '' : `<section class="card rep-card">
+    const filters = `<section class="card rep-card">
       <div class="rep-filters">
         <label class="field"><span>Desde semana</span><select data-change="rep-from">${weekOptions(S.repFrom)}</select></label>
         <label class="field"><span>Hasta semana</span><select data-change="rep-to">${weekOptions(S.repTo)}</select></label>
@@ -1166,7 +1143,7 @@
       ${(S.repContractor || S.repActivity || S.repCause) ? `<button type="button" class="link-btn" data-action="rep-clear">Quitar filtros</button>` : ''}
     </section>`;
     return `${pageHead('Reportes', `${esc(project().name)}, ${rangeTxt}`, exportBtns('hide-sm'))}
-      ${printHead(`Reporte: ${tabName}`, S.repTab === 'log' ? '' : rangeTxt)}
+      ${printHead(`Reporte: ${tabName}`, rangeTxt)}
       <div class="tabs" role="tablist">${REP_TABS.map(([id, label]) => `<button type="button" role="tab" class="${S.repTab === id ? 'active' : ''}" aria-selected="${S.repTab === id}" data-action="rep-tab" data-tab="${id}">${label}</button>`).join('')}</div>
       ${filters}
       <div class="rep-body">${body}</div>
@@ -1177,7 +1154,7 @@
      VISTA: AJUSTES
      ========================================================= */
   const CFG_TABS = [['proyectos', 'Proyectos'], ['contratistas', 'Contratistas'], ['sectores', 'Sectores'], ['pisos', 'Pisos'], ['causas', 'Causas'], ['especialidades', 'Especialidades'],
-    ['formula', 'Fórmula'], ['tablero', 'Tableros'], ['sinobra', 'Días sin obra'], ['simulador', 'Simulador']];
+    ['formula', 'Fórmula'], ['tablero', 'Tableros'], ['sinobra', 'Días sin obra']];
 
   function formulaModel() {
     return S.fdraft || { weights: Object.assign({}, CFG.weights), faltaFactor: CFG.faltaFactor,
@@ -1302,25 +1279,8 @@
           ${offs.length ? `<ul class="cfg-list">${offs.map((o) => `<li><div><strong>${fmtDayLong(o.date)}</strong><small>Semana ${weekOfDate(o.date)}</small></div><div class="cfg-actions"><button type="button" class="btn btn-soft btn-sm" data-action="off-remove" data-date="${o.date}">Reactivar</button></div></li>`).join('')}</ul>` : empty('No hay días sin obra', 'Los domingos no cuentan como día de obra.')}</section>`;
         break;
       }
-      default: {
-        const n = nowP();
-        body = `<section class="card"><div class="card-head"><div><h2>Simulador de fecha y hora</h2><p class="card-sub">Sirve para demostrar el sábado, el corte de las 12:00 y los bloqueos sin esperar al día real. Todo el sistema usa esta fecha y hora mientras esté activo.</p></div></div>
-          <div class="sim-now">${I.clock}<div><strong>${cap(fmtDayLong(n.date))}, ${hhmm(n.min)}</strong><small>${S.sim ? 'Fecha y hora simuladas' : 'Fecha y hora reales'}</small></div></div>
-          <form class="stack-form" data-form="sim">
-            <div class="field-row">
-              <label class="field"><span>Fecha</span><input type="date" name="date" value="${n.date}" min="${DB.year}-01-01" max="${DB.year}-12-31"></label>
-              <label class="field"><span>Hora</span><input type="time" name="time" value="${hhmm(n.min)}"></label>
-            </div>
-            <div class="modal-actions">
-              <button type="button" class="btn btn-ghost" data-action="sim-reset"${S.sim ? '' : ' disabled'}>Volver a hoy</button>
-              <button type="submit" class="btn btn-primary">Aplicar fecha y hora</button>
-            </div>
-          </form>
-          <div class="sim-quick"><span>Atajos:</span>
-            <button type="button" class="btn btn-soft btn-sm" data-action="sim-jump" data-add="1" data-time="09:00">Mañana 09:00</button>
-            <button type="button" class="btn btn-soft btn-sm" data-action="sim-jump" data-add="1" data-time="12:01">Mañana 12:01</button>
-            <button type="button" class="btn btn-soft btn-sm" data-action="sim-sat">Próximo sábado</button></div></section>`;
-      }
+      default:
+        body = '';
     }
     return `${pageHead('Ajustes', 'Catálogos y reglas que usa todo el sistema.')}
       <div class="tabs" role="tablist">${CFG_TABS.map(([id, label]) => `<button type="button" role="tab" class="${S.cfgTab === id ? 'active' : ''}" aria-selected="${S.cfgTab === id}" data-action="cfg-tab" data-tab="${id}">${label}</button>`).join('')}</div>
@@ -1708,13 +1668,8 @@
     ps.innerHTML = DB.projects.map((p) => `<option value="${p.id}"${p.id === S.projectId ? ' selected' : ''}>${esc(p.name)}</option>`).join('');
     const os = $('#operatorSelect');
     os.innerHTML = DB.operators.map((o) => `<option${o === S.operator ? ' selected' : ''}>${esc(o)}</option>`).join('');
-    const badge = $('#simBadge');
-    if (S.sim) {
-      badge.hidden = false;
-      badge.innerHTML = `${I.clock}<span><b>Fecha simulada</b> ${esc(fmtDay(S.sim.date))} ${esc(S.sim.time)}</span>`;
-    } else { badge.hidden = true; badge.innerHTML = ''; }
     const sb = $('#sbToday');
-    if (sb) sb.textContent = `${cap(fmtDayLong(today()))}${S.sim ? ' (simulado)' : ''}`;
+    if (sb) sb.textContent = `${cap(fmtDayLong(today()))}`;
     renderNav();
   }
 
@@ -2019,18 +1974,6 @@
       logAct('Ajustes', `Día reactivado: ${fmtDayLong(el.dataset.date)}`);
       render({ enter: false });
     },
-    'sim-reset': () => { S.sim = null; syncClock(); render({ enter: false }); toast('Vuelves a la fecha y hora reales.', 'info'); },
-    'sim-jump': (el) => {
-      const n = nowP();
-      S.sim = { date: addDays(n.date, Number(el.dataset.add)), time: el.dataset.time };
-      syncClock(); render({ enter: false }); toast(`Simulando ${fmtDay(S.sim.date)} ${S.sim.time}.`, 'info');
-    },
-    'sim-sat': () => {
-      let d = today();
-      while (dayIdx(d) !== 5) d = addDays(d, 1);
-      S.sim = { date: d, time: '09:00' };
-      syncClock(); render({ enter: false }); toast(`Simulando el sábado ${fmtShort(d)}.`, 'info');
-    },
     'modal-close': () => closeModal(),
     'confirm-ok': () => { const cb = pendingConfirm; closeModal(); if (cb) cb(); }
   };
@@ -2069,9 +2012,6 @@
     'rep-contractor': (el) => { S.repContractor = el.value; render({ enter: false }); },
     'rep-activity': (el) => { S.repActivity = el.value; render({ enter: false }); },
     'rep-cause': (el) => { S.repCause = el.value; render({ enter: false }); },
-    'log-who': (el) => { S.logWho = el.value; render({ enter: false }); },
-    'log-type': (el) => { S.logType = el.value; render({ enter: false }); },
-    'log-date': (el) => { S.logDate = el.value; render({ enter: false }); },
     'proj-delay': (el) => {
       const p = project(el.dataset.id), v = Math.max(0, Math.min(30, Math.round(Number(el.value) || 0)));
       logAct('Ajustes', `${p.name}: días por retraso ${p.delayDays} → ${v}`);
@@ -2300,13 +2240,6 @@
       logAct('Ajustes', `Fórmula actualizada: pesos ${wk.map((k) => CFG.weights[k]).join('/')}, falta ×${CFG.faltaFactor}, meta ${CFG.meta}%`);
       S.fdraft = null;
       render({ enter: false }); toast('Fórmula guardada.');
-    },
-    sim: (form) => {
-      const fd = new FormData(form), date = String(fd.get('date') || ''), time = String(fd.get('time') || '');
-      if (!date || !time) return toast('Elige fecha y hora.', 'error');
-      S.sim = { date, time };
-      syncClock(); render({ enter: false });
-      toast(`Fecha simulada: ${fmtDay(date)} ${time}.`, 'info');
     }
   };
   document.addEventListener('submit', (e) => {
